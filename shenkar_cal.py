@@ -15,7 +15,7 @@ from datetime import timedelta
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 
 creds = None
-
+service = None
 
 def semester_schedule(table, parm):
     for index, row in  table.iterrows():
@@ -25,6 +25,9 @@ def semester_schedule(table, parm):
         end = row[6]
         day = row[8]
         splited_end = end.split(":")
+        if not start or not end:
+            print("Unable to add this event: " + title)
+            continue
         startTime = datetime.strftime(parm.start, '%d/%m/%Y') + ' ' + str(start)
         firstDay = datetime.strptime(startTime, '%d/%m/%Y %H:%M')
         
@@ -36,6 +39,8 @@ def semester_schedule(table, parm):
             firstDay += timedelta(days=3)
         elif day == 'ה':
             firstDay += timedelta(days=4)
+        elif day == 'ו':
+            firstDay += timedelta(days=5)
 
         endTime = firstDay.replace(hour=int(splited_end[0]),minute=int(splited_end[1]))
 
@@ -89,6 +94,53 @@ def exams(table,moed):
         print(event)
         print('\n')
         event = service.events().insert(calendarId='0836ibjeeoiqh1ldb1lii447ig@group.calendar.google.com', body=event).execute()
+
+
+def year_pdf(table):
+    for index, row in  table.iterrows():
+        if not row[1]:
+            continue
+        date = row[1]
+        start = None
+        end = None
+        if '-' in date:
+            start = date.split('-')[0] + '.' + date.split('.',1)[1]
+            start = datetime.strptime(start, '%d.%m.%y')
+            end = date.split('-')[1]
+            end = datetime.strptime(end, '%d.%m.%y')
+        else:
+            date = datetime.strptime(date, '%d.%m.%y')
+        title = row[3]
+        note = row[0]
+        title = title.replace('(cid:26)', 'ם')
+        title = title.replace('(cid:23)', 'ם')
+        title = title.replace('(cid:16)', 'ן')
+        title = title.replace('(cid:31)', 'ן')
+        title = title.replace('(cid:11)', 'ס')
+        title = title.replace('(cid:12)', 'ס')
+        title = title.replace('(cid:4)', 'ץ')
+        title = title.replace('(cid:10)', 'ץ')
+        title = title.replace('(cid:13)', "'")
+        title = title.replace('(cid:30)', '"')
+        title = title.replace('(cid:9)', '"')
+        
+
+        event = {
+            'summary': title [::-1],
+            "description": note [::-1],
+            'start': {
+                'date': start.strftime("%y-%m-%d") if start else date.strftime("%Y-%m-%d"),
+                'timeZone': 'Asia/Jerusalem'
+            },
+            'end': {
+                'date': end.strftime("%y-%m-%d") if end else date.strftime("%Y-%m-%d"),
+                'timeZone': 'Asia/Jerusalem'
+            },
+            }
+        print(event)
+        print('\n')    
+        event = service.events().insert(calendarId='0836ibjeeoiqh1ldb1lii447ig@group.calendar.google.com', body=event).execute()
+            
 
 
 def year_events():
@@ -151,10 +203,12 @@ def year_events():
 
 
 def main():
+    global creds
+    global service
     parser = argparse.ArgumentParser()
-    parser.add_argument('--start', type=lambda s: datetime.strptime(s, '%d/%m/%Y'), help="start date", required=True)
-    parser.add_argument('--end', type=lambda s: datetime.strptime(s, '%d/%m/%Y'), help="end date",required=True)
-    parser.add_argument('--pdf', type=str, help="file path",required=True)
+    parser.add_argument('--start', type=lambda s: datetime.strptime(s, '%d/%m/%Y'), help="start date")
+    parser.add_argument('--end', type=lambda s: datetime.strptime(s, '%d/%m/%Y'), help="end date")
+    parser.add_argument('--pdf', type=str, help="file path")
     parser.add_argument('--exams', default=False, action='store_true')
     parser.add_argument('--schedule', default=False, action='store_true')
     parser.add_argument('--year', default=False, action='store_true')
@@ -179,6 +233,13 @@ def main():
 
 
     if parameters.schedule:
+        if not parameters.pdf:
+                print("Error: file path missing\n USAGE: --pdf <path to file>")
+                return
+        if not parameters.start or not parameters.end:
+                print("Error: start/end missing\n USAGE: --end / --start <dd/mm/yyyy>")
+                return
+
         Table = camelot.read_pdf(parameters.pdf)[1].df
         Table = Table[1:]
         semester_schedule(Table, parameters)
@@ -189,7 +250,12 @@ def main():
         exams(camelot.read_pdf(parameters.pdf)[2].df,7)
 
     elif parameters.year:
-        year_events()
+        if parameters.pdf:
+            Table = camelot.read_pdf(parameters.pdf)[0].df
+            Table = Table[1:]
+            year_pdf(Table)
+        else:
+            year_events()
 
     else:
         print("USAGE: choose mode: --exams | --schedule | --year")

@@ -1,10 +1,7 @@
 import camelot
-import sys
 import argparse
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from datetime import datetime
-import pickle
+import pickle   
 import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -64,7 +61,7 @@ def semester_schedule(table, parm):
         
         print(event)
         print('\n')
-        recurring_event = service.events().insert(calendarId='0836ibjeeoiqh1ldb1lii447ig@group.calendar.google.com', body=event).execute()
+        # recurring_event = service.events().insert(calendarId='0836ibjeeoiqh1ldb1lii447ig@group.calendar.google.com', body=event).execute()
 
 
 def exams(table,moed):
@@ -166,8 +163,8 @@ def year_events():
         title = row[0]
         note = row[2]
         event = {
-            'summary': title [::-1],
-            "description": note [::-1] if not pd.isna(note) else "",
+            'summary': title,
+            "description": note if not pd.isna(note) else "",
             'start': {
                 'date': start.strftime("%y-%m-%d") if start else date.strftime("%Y-%m-%d"),
                 'timeZone': 'Asia/Jerusalem'
@@ -179,66 +176,8 @@ def year_events():
             }
         print(event)
         print('\n') 
-        event = service.events().insert(calendarId='0836ibjeeoiqh1ldb1lii447ig@group.calendar.google.com', body=event).execute()
+        # event = service.events().insert(calendarId='0836ibjeeoiqh1ldb1lii447ig@group.calendar.google.com', body=event).execute()
 
-
-def year_events_old():
-    driver = webdriver.Firefox('.')
-    driver.get("https://www.shenkar.ac.il/he/pages/academic-secretariat-studies-calander")
-    table = driver.find_element_by_tag_name("table")
-
-    rows = table.find_elements_by_tag_name("tr")
-
-    rows = rows[1:]
-
-    for row in rows:
-            row_data = row.find_elements_by_tag_name("td")
-            title = row_data[0]
-            date = row_data[1]
-            info = row_data[2]
-            date = date.text.split(" ")[-1].strip()
-            if len(date) < 3:
-                continue
-            if '-' in date:
-                splited_date = date.split("-")
-                end_time = datetime.strptime(splited_date[1],'%d.%m.%y')
-                start_time = end_time.replace(day=int(splited_date[0]))
-                start_time = start_time.strftime("%Y-%m-%d")
-                end_time = end_time.strftime("%Y-%m-%d")
-                event = {
-                    'summary': title.text.encode('utf-8'),
-                    'description': info.text.encode('utf-8'),
-                    'start': {
-                    'date': start_time,
-                    'timeZone' : 'Asia/Jerusalem'
-                    },
-                    'end': {
-                    'date': end_time,
-                    'timeZone': 'Asia/Jerusalem',
-                },
-                }
-
-                event = service.events().insert(calendarId='primary', body=event).execute()
-    
-            else:
-                date =  datetime.strptime(date,'%d.%m.%y')
-                date = date.strftime("%Y-%m-%d")
-                event = {
-                    'summary': title.text.encode('utf-8'),
-                    'description': info.text.encode('utf-8'),
-                    'start': {
-                    'date': date,
-                    'timeZone' : 'Asia/Jerusalem'
-                    },
-                    'end': {
-                    'date': date,
-                    'timeZone': 'Asia/Jerusalem',
-                },
-                }
-
-                event = service.events().insert(calendarId='primary', body=event).execute()
-                
-    driver.close()
 
 
 def main():

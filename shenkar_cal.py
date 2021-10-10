@@ -10,6 +10,8 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from datetime import timedelta
+import requests 
+import pandas as pd
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
@@ -141,9 +143,46 @@ def year_pdf(table):
         print('\n')    
         event = service.events().insert(calendarId='0836ibjeeoiqh1ldb1lii447ig@group.calendar.google.com', body=event).execute()
             
-
-
 def year_events():
+    url = "https://www.shenkar.ac.il/he/pages/academic-secretariat-studies-calander"
+    html = requests.get(url, verify=False).content
+    df_list = pd.read_html(html)
+    rows = df_list[0].values.tolist()
+    for row in rows:
+        date = row[1].split(' ')[-1]
+        start = None
+        end = None
+        if '-' in date:
+            start = date.split('-')[0] + '.' + date.split('.',1)[1]
+            start = datetime.strptime(start, '%d.%m.%y')
+            end = date.split('-')[1]
+            end = datetime.strptime(end, '%d.%m.%y')
+        else:
+            try:
+                date = datetime.strptime(date, '%d.%m.%y')
+            except:
+                print('\033[93m' + "Could not add this event:\n", row , '\033[0m', '\n')
+                continue
+        title = row[0]
+        note = row[2]
+        event = {
+            'summary': title [::-1],
+            "description": note [::-1] if not pd.isna(note) else "",
+            'start': {
+                'date': start.strftime("%y-%m-%d") if start else date.strftime("%Y-%m-%d"),
+                'timeZone': 'Asia/Jerusalem'
+            },
+            'end': {
+                'date': end.strftime("%y-%m-%d") if end else date.strftime("%Y-%m-%d"),
+                'timeZone': 'Asia/Jerusalem'
+            },
+            }
+        print(event)
+        print('\n') 
+        event = service.events().insert(calendarId='0836ibjeeoiqh1ldb1lii447ig@group.calendar.google.com', body=event).execute()
+
+
+def year_events_old():
     driver = webdriver.Firefox('.')
     driver.get("https://www.shenkar.ac.il/he/pages/academic-secretariat-studies-calander")
     table = driver.find_element_by_tag_name("table")
